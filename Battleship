@@ -1,0 +1,292 @@
+from tkinter import *
+import random
+
+
+
+
+
+def makeModel(data):
+    data["rows"] =10
+    data["cols"] = 10
+    data["boardSize"]= 500
+    data["cellSize"] = data["boardSize"]/data["rows"]
+    data["userShips"] = 5
+    data["computerShips"] = 5
+    data["userBoard"] = emptyGrid(data["rows"],data["cols"])
+    data["computerBoard"] = emptyGrid(data["rows"],data["cols"])
+    data["computerBoard"] = addShips(data["computerBoard"], data["computerShips"])
+    data["tempShip"]=[]
+    data["userShips"]=0
+    data["winner"] = None
+    data["turns"] = 0
+
+
+
+def makeView(data, userCanvas, compCanvas):
+    drawGrid(data,userCanvas,data["userBoard"],True)
+    drawGrid(data,compCanvas,data["computerBoard"],False)
+    drawShip(data, userCanvas, data["tempShip"])
+    drawGameOver(data, userCanvas)
+    drawGameOver(data, compCanvas)
+
+
+def keyPressed(data, event):
+    if data["winner"] and event.keysym == "Return":
+        makeModel(data)
+    pass
+
+
+def mousePressed(data, event, board):
+    row, col = getClickedCell(data,event)
+    if board == "user":
+        clickUserBoard(data, row, col)
+    elif board== "comp" and data["userShips"]== 5:
+        row, col = getClickedCell(data,event)
+        runGameTurn(data, row, col)
+    pass
+
+
+def emptyGrid(rows, cols):
+    grid=[]
+    for i in range(rows):
+        row = []
+        for j in range(cols):
+            row.append(1)
+        grid.append(row)
+    return grid
+
+
+
+def createShip():
+    row = random.randint(1,8)
+    col = random.randint(1,8)
+    direction = random.randint(0,1)
+    if direction == 1:
+        return [[row-1, col],[row,col], [row+1,col]]
+    else:
+        return [[row,col-1],[row,col], [row,col+1]]
+    return
+
+def checkShip(grid, ship):
+    for coord in ship:
+        row= coord[0]
+        col= coord[1]
+        if grid[row][col] !=1:
+            return False
+    return True
+
+def addShips(grid, numShips):
+    count =0
+    while count<numShips:
+        ship = createShip()
+        if checkShip(grid, ship):
+            for coord in ship:
+                row = coord[0]
+                col= coord[1]
+                grid[row][col] =2
+            count +=1
+    return grid
+
+
+def drawGrid(data, canvas, grid, showShips):
+    for row in range(data["rows"]):
+        for col in range(data["cols"]):
+            x = row * data["cellSize"]
+            y = col * data["cellSize"]
+            z= data["cellSize"]
+            if grid[row][col] == 1:
+                color = "blue"
+            elif grid[row][col] == 2:
+                if showShips:
+                    color = "yellow"
+                else:
+                    color ="blue"
+            elif grid[row][col]== 3:
+                color = "white"
+            elif grid[row][col]==4:
+                color = "red"
+            canvas.create_rectangle(y,x,y+z,x+z, fill = color)
+
+
+def isVertical(ship):
+    ship.sort()
+    if ship[0][1] == ship[1][1] and ship[1][1] == ship[2][1]:
+        if ship[0][0]+1 == ship[1][0] and ship[1][0] + 1 == ship[2][0]:
+            return True
+    
+    return False
+
+
+def isHorizontal(ship):
+    ship.sort()
+    if ship[0][0] == ship[1][0] == ship[2][0]:
+        if ship[0][1]+1 == ship[1][1] and ship[1][1]+1 == ship[2][1]:
+            return True
+    
+    return False
+
+
+def getClickedCell(data, event):
+    cellSize= data["cellSize"]
+    row = int(event.y/cellSize)
+    col = int(event.x/cellSize)
+    cell=[row,col]
+    return cell
+
+
+
+def drawShip(data, canvas, ship):
+    for coord in ship:
+        row = coord[0]
+        col=coord[1]
+        x = row * data["cellSize"]
+        y = col * data["cellSize"]
+        z= data["cellSize"]
+        canvas.create_rectangle(y,x,y+z,x+z, fill = "white")
+    return
+
+
+def shipIsValid(grid, ship):
+    if len(ship) != 3:
+        return False
+    if not checkShip(grid,ship):
+        return False
+    if not (isHorizontal(ship) or isVertical(ship)):
+        return False
+        
+    return True
+
+
+
+def placeShip(data):
+    grid = data["userBoard"]
+    ship = data["tempShip"]
+    if shipIsValid(grid,ship):
+        for coord in ship:
+            row = coord[0]
+            col= coord[1]
+            grid[row][col] = 2
+        data["userShips"] +=1
+    else:
+        "That's not a valid location. Please try again."
+    if data["userShips"]==5:
+            print("All of your ships have been added. Let's Begin.")
+    data["tempShip"]=[]
+
+
+def clickUserBoard(data, row, col):
+    ship = data["tempShip"]
+    if [row,col] in ship:
+        return
+    if data["userShips"]== 5:
+        return
+    ship.append([row,col])
+    if len(ship)== 3:
+        placeShip(data)
+
+
+def updateBoard(data, board, row, col, player):
+    if board[row][col] == 2:
+        board[row][col]= 4
+    elif board[row][col]==1:
+        board[row][col]=3
+    if isGameOver(board):
+        data["winner"] = player
+
+
+
+def runGameTurn(data, row, col):
+    board = data["computerBoard"]
+    if board[row][col] == 3 or board[row][col]== 4:
+        return
+    player = "user"
+    updateBoard(data, data["computerBoard"], row, col, player)
+    player2="comp"
+    guess = getComputerGuess(data["userBoard"])
+    updateBoard(data, data["userBoard"], guess[0], guess[1], player2)
+    data["turns"] +=1
+    if data["turns"] == 50:
+        data["winner"] = "draw"
+        
+
+
+def getComputerGuess(board):
+    while True:
+        row = random.randint(1,9)
+        col = random.randint(1,9)
+        if board[row][col]==1 or board[row][col]==2:
+            return [row,col]
+
+
+
+def isGameOver(board):
+    for row in board:
+        for cell in row:
+            if cell == 2:
+                return False
+    return True
+
+
+def drawGameOver(data, canvas):
+    if data["winner"]== "user":
+        canvas.create_text(250, 250, text="Congrats. You won!",fill = "black") 
+    elif data["winner"] == "comp":
+        canvas.create_text(250, 250, text="Unfortunately you lost.", fill = "black")
+    elif data["winner"] == "draw":
+        canvas.create_text(250, 250, text="You are out of turns. The game is a draw.", fill = "black")
+    if data["winner"] != None:
+        canvas.create_text(350, 350, text="If you wish to play again, press Enter.", fill = "black")
+    
+
+### SIMULATION FRAMEWORK ###
+
+from tkinter import *
+
+def updateView(data, userCanvas, compCanvas):
+    userCanvas.delete(ALL)
+    compCanvas.delete(ALL)
+    makeView(data, userCanvas, compCanvas)
+    userCanvas.update()
+    compCanvas.update()
+
+def keyEventHandler(data, userCanvas, compCanvas, event):
+    keyPressed(data, event)
+    updateView(data, userCanvas, compCanvas)
+
+def mouseEventHandler(data, userCanvas, compCanvas, event, board):
+    mousePressed(data, event, board)
+    updateView(data, userCanvas, compCanvas)
+
+def runSimulation(w, h):
+    data = { }
+    makeModel(data)
+
+    root = Tk()
+    root.resizable(width=False, height=False) # prevents resizing window
+
+    # We need two canvases - one for the user, one for the computer
+    Label(root, text = "USER BOARD - click cells to place ships on your board.").pack()
+    userCanvas = Canvas(root, width=w, height=h)
+    userCanvas.configure(bd=0, highlightthickness=0)
+    userCanvas.pack()
+
+    compWindow = Toplevel(root)
+    compWindow.resizable(width=False, height=False) # prevents resizing window
+    Label(compWindow, text = "COMPUTER BOARD - click to make guesses. The computer will guess on your board.").pack()
+    compCanvas = Canvas(compWindow, width=w, height=h)
+    compCanvas.configure(bd=0, highlightthickness=0)
+    compCanvas.pack()
+
+    makeView(data, userCanvas, compCanvas)
+
+    root.bind("<Key>", lambda event : keyEventHandler(data, userCanvas, compCanvas, event))
+    compWindow.bind("<Key>", lambda event : keyEventHandler(data, userCanvas, compCanvas, event))
+    userCanvas.bind("<Button-1>", lambda event : mouseEventHandler(data, userCanvas, compCanvas, event, "user"))
+    compCanvas.bind("<Button-1>", lambda event : mouseEventHandler(data, userCanvas, compCanvas, event, "comp"))
+
+    updateView(data, userCanvas, compCanvas)
+
+    root.mainloop()
+
+runSimulation(500, 500)
+
