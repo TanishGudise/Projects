@@ -1,0 +1,135 @@
+from cmu_graphics import *
+import random
+def onAppStart(app):
+    resetApp(app)
+
+def distance(x0,y0,x1,y1):
+    return ((x1-x0)**2+(y1-y0)**2)**0.5
+
+def resetApp(app):
+    app.isNight = False
+    app.bgcolor = "lightblue"
+    app.buildings = 10
+    app.bWidth = app.width/app.buildings
+    app.minHeight = 50
+    app.maxHeight = app.height/2
+    app.bHeights = [random.randrange(app.minHeight, app.maxHeight) for b in range(app.buildings)]
+    colorOptions = ["orange", "magenta", "green", "gray", "red"]
+    app.bColors = [random.choice(colorOptions) for b in range(app.buildings)]
+    
+    
+    app.pRadius = 10
+    app.px0 = app.bWidth/2
+    app.py0 = app.height - app.bHeights[0] - app.pRadius
+    app.pFill0 = "darkblue"
+    app.px1 = app.width-app.bWidth/2
+    app.py1 = app.height - app.bHeights[-1] - app.pRadius
+    app.pFill1 = "maroon"
+    app.players = [[app.px0,app.py0,app.pFill0], [app.px1,app.py1,app.pFill1]]
+    app.blotFill = None
+    app.currentPlayer = 0
+    app.blotRadius = 10
+    app.blotX = 0
+    app.blotY = 0
+    app.force = 0.3
+    app.gameOver = False
+    app.holes=[]
+    app.holeRadius = 30
+
+
+   
+def onMousePress(app,mouseX,mouseY):
+    if app.blotFill == None and app.gameOver == False:
+        app.blotX,app.blotY,app.blotFill = app.players[app.currentPlayer]
+        app.blotDx = (mouseX - app.blotX)*0.04
+        app.blotDy = (mouseY - app.blotY)*0.04
+        
+    pass
+ 
+
+def onStep(app):
+    if app.blotFill != None:
+        app.blotX += app.blotDx
+        app.blotY += app.blotDy
+        app.blotDy+=0.2
+    if app.blotY >app.height or (app.blotX >app.width or app.blotX<0):
+        app.blotFill = None
+        nextPlayer(app)
+    
+    otherPlayer = 1- app.currentPlayer
+    otherX,otherY,otherFill = app.players[otherPlayer]
+    if distance(app.blotX,app.blotY,otherX,otherY) < app.blotRadius + app.pRadius:
+        app.gameOver = True
+        app.blotFill = None
+        app.holes.append([app.blotX,app.blotY])
+    
+    for i in range(len(app.holes)):
+        holeX,holeY = app.holes[i]
+        if distance(app.blotX,app.blotY,holeX,holeY) < app.holeRadius - app.blotRadius:
+            return
+    
+    
+    for i in range(app.buildings):
+        left = i * app.bWidth
+        top = app.height - app.bHeights[i]
+        bottom = app.height
+        right = left + app.bWidth
+        if (left <= app.blotX <= right) and (top<=app.blotY <= bottom):
+            app.holes.append([app.blotX,app.blotY])
+            app.blotFill = None
+            nextPlayer(app)
+            return
+    pass
+
+def nextPlayer(app):
+    app.currentPlayer = 1-app.currentPlayer
+    
+def onKeyPress(app,key):
+    if key =="r":
+        resetApp(app)
+    if key == "n":
+        app.bgcolor = "black"
+    if key == "d":
+        app.bgcolor = "lightblue"
+    pass
+
+
+    
+def redrawAll(app):
+    drawBackground(app)
+
+
+def drawBackground(app):
+    drawRect(0,0,app.width,app.height, fill = app.bgcolor)
+    drawBuildings(app)
+    drawPlayers(app)
+    drawHoles(app)
+    drawBlot(app)
+    drawGameOver(app)
+    
+    
+def drawHoles(app):
+    for i in range(len(app.holes)):
+        x,y = app.holes[i]
+        drawCircle(x,y,app.holeRadius,fill = "lightblue")
+
+def drawBuildings(app):
+    for i in range(app.buildings):
+        left = i * app.bWidth
+        top = app.height - app.bHeights[i]
+        color = random.choice(app.bColors)
+        drawRect(left,top,app.bWidth,app.bHeights[i],fill = app.bColors[i], border = "black",borderWidth = 1)
+def drawPlayers(app):
+    drawCircle(app.px0,app.py0,app.pRadius,fill = app.pFill0)
+    drawCircle(app.px1,app.py1,app.pRadius, fill = app.pFill1)
+
+def drawBlot(app):
+    if app.blotFill != None:
+        drawCircle(app.blotX,app.blotY, app.blotRadius, fill = app.blotFill)
+def drawGameOver(app):
+    if app.gameOver:
+        drawLabel("You Lost",app.width/2, app.height/2, size = 42)
+def main():
+    runApp(width = 800, height = 600)
+   
+main()
