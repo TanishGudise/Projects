@@ -1,0 +1,246 @@
+from cmu_graphics import *
+import random
+
+
+class Shape:
+    def __init__(self,name,color,vertices):
+        self.name = name
+        self.color = color
+        self.isDrag = False
+        self.dx = 0
+        self.dy = 0
+        self.vertices = vertices
+        
+    def randomizeLocation(self,width,height):
+        minX = min(x for x,y in self.vertices)
+        minY = min(y for x,y in self.vertices)
+        maxX = max(x for x,y in self.vertices)
+        maxY = max(y for x,y in self.vertices)
+        shapeWidth = maxX-minX
+        shapeHeight = maxY - minY
+        cx = random.randint(0,width-shapeWidth) - minX
+        cy = random.randint(0,height-shapeHeight) - minY
+        self.vertices = [(x + cx, y+cy) for (x,y) in self.vertices]
+        
+    def moveShape(self,x,y):
+        dx = x - self.vertices[0][0]
+        dy = y -self.vertices[0][1]
+        self.vertices = [(cx + dx,cy+dy) for (cx,cy) in self.vertices]
+    
+    def changeColor(self,color):
+        self.color = color
+    def drag(self,x,y):
+        self.isDrag = True
+        self.dx = x - self.vertices[0][0]
+        self.dy = y -self.vertices[0][1]
+    def hash(self):
+        return hash(str(self))
+
+    
+        
+
+        
+
+def onAppStart(app):
+    app.template = [(150,150),(200,100),(250,150),(250,250),(150,250),(150,150),(200,250),(250,150)]
+    app.bold = False
+    app.gameNum = 1
+    app.showBorders = False
+    app.max = 5
+    app.colors = ["yellow","green","navy","powderBlue","teal","pink","gold","darkKhaki","chocolate","cyan","lightSkyBlue"]
+    app.shapes = [Shape("Polygon","",[(0,0),(-50,-100),(0,-150),(50,-100)]),Shape("Triangle2","",[(0,0),(50,0),(0,-100)]),
+                Shape("Triangle1","",[(0,0),(-50,0),(0,-100)])]
+    randomizeAll(app)
+    app.snapPoints = [(250,250),(150,250),(200,250)]
+    app.correctOrder = {"Triangle1":(250,250),"Triangle2":(150,250),"Polygon":(200,250)}
+    app.snapDistance = 13
+    app.gameOver = False
+    pass
+def randomizeAll(app):
+    randomizeColors(app.shapes,app.colors)
+    for shape in app.shapes:
+        shape.randomizeLocation(app.width,app.height)
+def randomizeColors(shapes,colorList):
+    random.shuffle(colorList)
+    for i in range(len(shapes)):
+        shapes[i].changeColor(colorList[i])
+
+
+def finishPuzzle(app):
+    for shape in app.shapes:
+        correctPosition = app.correctOrder[shape.name]
+        shape.moveShape(correctPosition[0],correctPosition[1])
+def flatten(vertices):
+    flattened = [point for vertex in vertices for point in vertex]
+    return flattened
+def redrawAll(app):
+    if app.gameOver:
+        drawRect(0,0,app.width,app.height,fill = "lightGreen")
+        drawLabel("Congrats. You won", 200,350, size = 16, bold = True)
+        if app.gameNum == 4:
+            drawLabel("YOU LOVE 112",200,300,size = 20, bold = True)
+            
+    drawInstructions(app)
+    drawShape(app,app.gameNum)
+    
+    for shape in app.shapes:
+        vertices = flatten(shape.vertices)
+        if shape.isDrag == True:
+            drawPolygon(*vertices,fill = shape.color,border = "red",borderWidth = 4)
+        else:
+            drawPolygon(*vertices,fill = shape.color,borderWidth = 4)
+    if app.showBorders:
+        drawBorders(app,app.template,app.max)
+    pass
+
+def drawInstructions(app):
+    drawLabel("Tanagrams",200,20,size = 16,bold = True)
+    drawLabel("Press 1-3 to choose the tanagram",200,40,size = 14)
+    drawLabel("Press h to toggle hint",200,60,size = 14)
+def snapPiece(app,shape):
+    closestPoint = None
+    minDistance = 10000000
+    for point in app.snapPoints:
+        x = shape.vertices[0][0]
+        y = shape.vertices[0][1]
+        dx,dy = point[0]-x, point[1] - y
+        distance = (dx**2 + dy**2)**0.5
+        if distance<= app.snapDistance:
+            closestPoint = point
+            minDistance = distance
+    if closestPoint and minDistance <= app.snapDistance:
+        shape.moveShape(closestPoint[0],closestPoint[1])
+        
+
+def reversed(lst):
+    return lst[::-1]
+    
+def onMousePress(app,mouseX,mouseY):
+    if app.gameOver == False:
+        for shape in reversed(app.shapes):
+            if inShape(mouseX,mouseY,shape.vertices):
+                shape.drag(mouseX,mouseY)
+                return
+
+def onMouseDrag(app,mouseX,mouseY):
+    for shape in app.shapes:
+        if shape.isDrag == True:
+            newX = mouseX - shape.dx
+            newY = mouseY - shape.dy
+            shape.moveShape(newX,newY)
+def onMouseRelease(app,mouseX,mouseY):
+    for shape in app.shapes:
+        if shape.isDrag == True:
+            shape.isDrag = False
+            snapPiece(app,shape)
+            isGameOver(app)
+    
+def onKeyPress(app,key):
+    if key == "1":
+        app.gameNum = 1
+        app.template = [(150,150),(200,100),(250,150),(250,250),(150,250),(150,150),(200,250),(250,150)]
+        app.max = 5
+        app.shapes = [Shape("Polygon","",[(0,0),(-50,-100),(0,-150),(50,-100)]),
+                Shape("Triangle1","",[(0,0),(-50,0),(0,-100)]),Shape("Triangle2","",[(0,0),(50,0),(0,-100)])]
+        app.showBorders = False
+        randomizeAll(app)
+        app.snapPoints = [(250,250),(150,250),(200,250)]
+        app.correctOrder = {"Triangle1":(250,250),"Triangle2":(150,250),"Polygon":(200,250)}
+        app.gameOver = False
+        
+    elif key == "2":
+        app.gameNum = 2
+        app.template = [(100,100),(100,300),(300,300),(300,100),(100,100),(250,250),(250,150),(300,100),(100,300),(200,200),(150,250),(200,300),(300,200)]
+        app.max = 4
+        app.showBorders = False
+        app.shapes = [Shape("BigTriangle1","",[(0,0),(-100,-100),(-100,100)]),Shape("BigTriangle2","",[(0,0),(-100,-100),(100,-100)]),
+                    Shape("MediumTriangle","",[(0,0),(0,-100),(-100,0)]),Shape("TinyTriangle1","",[(0,0),(50,50),(50,-50)]),
+                    Shape("TinyTriangle2","",[(0,0),(50,50),(-50,50)]),Shape("Square","",[(0,0),(50,-50),(100,0),(50,50)]),
+                    Shape("Polygon","",[(0,0),(0,-100),(50,-150),(50,-50)])]
+        randomizeAll(app)
+        app.correctOrder = {"BigTriangle1":(200,200),"BigTriangle2":(200,200),"Square":(150,250),"Polygon":(250,250),
+                        "MediumTriangle":(300,300),"TinyTriangle1":(200,200),"TinyTriangle2":(150,250)}
+        app.snapPoints = [(200,200),(300,300),(150,250),(250,250),(150,250)]
+        app.gameOver = False
+        
+        
+    elif key in "34567890":
+        app.gameNum = 3
+        app.template = [(100,200),(200,100),(300,200),(200,300),(100,200),(250,200),(250,250),(250,150),(200,150),(200,100),(200,300),(200,250),(250,200)]
+        app.max = 4
+        app.showBorders = False
+        app.shapes = [Shape("MediumTriangle1","",[(0,0),(-100,0),(0,-100)]),Shape("MediumTriangle2","",[(0,0),(-100,0),(0,100)]),
+                    Shape("SmallTriangle1","",[(0,0),(-50,-50),(-50,50)]),Shape("TinyTriangle1","",[(0,0),(0,-50),(50,0)]),
+                    Shape("TinyTriangle2","",[(0,0),(0,50),(50,0)]),Shape("Square","",[(0,0),(50,0),(50,50),(0,50)]),
+                    Shape("Polygon","",[(0,0),(50,-50),(50,0),(0,50)])]
+        app.correctOrder = {"Polygon":(200,250),"Square":(200,150),"SmallTriangle1":(300,200),"MediumTriangle1":(200,200),
+                            "MediumTriangle2":(200,200),"TinyTriangle1":(200,150),"TinyTriangle2":(200,200)}
+
+        app.snapPoints = [(200,200),(200,250),(300,200),(200,150)]
+        randomizeAll(app)
+        app.gameOver = False
+    if key == "s":
+        app.gameNum = 4
+        app.template = [(166,116),(200,150),(234,116),(284,164),(200,260),(116,164),(166,116),(216,164),(200,150),(268,150),(284,164),(116,164),(166,164),(166,221),
+                    (194,190),(166,164),(234,221),(284,164)]
+        app.max = 7
+        app.showBorders = False
+        app.shapes = [Shape("MediumTriangle","",[(0,0),(-50,48),(50,48)]),Shape("SmallTriangle1","",[(0,0),(0,57),(-50,0)]),
+                    Shape("SmallTriangle2","",[(0,0),(-34,34),(34,34)]),Shape("TinyTriangle","",[(0,0),(-28,-26),(-28,31)]),
+                    Shape("BigTriangle","",[(0,0),(-68,-57),(50,-57)]),Shape("Polygon1","",[(0,0),(68,0),(84,14),(16,14)]),
+                    Shape("Polygon2","",[(0,0),(-34,-39),(-6,-70),(34,-39)])]
+        randomizeAll(app)
+        app.correctOrder = {"MediumTriangle":(166,116),"SmallTriangle1":(166,164),"SmallTriangle2":(234,116),
+                        "TinyTriangle":(194,190),"BigTriangle":(234,221),"Polygon1":(200,150),"Polygon2":(200,260)}
+        app.snapPoints = [(166,116),(166,164),(234,116),(194,190),(234,221),(200,150),(200,260)]
+        app.gameOver = False
+
+    if key == "h":
+        app.showBorders = not app.showBorders
+    if key == "f":
+        finishPuzzle(app)
+        app.gameOver = True
+    pass
+def drawBorders(app,points,max):
+    for i in range(len(points)-1):
+        x1,y1 = app.template[i]
+        x2,y2 = app.template[(i+1)]
+        if i <max:
+            drawLine(x1,y1,x2,y2)
+        else:
+            drawLine(x1,y1,x2,y2,lineWidth = 4)
+def drawShape(app,num):
+    if num == 1:
+        drawRect(150,150,100,100,fill = "gray", opacity = 50)
+        drawPolygon(150,150,200,100,250,150,fill = "gray",opacity = 50)
+    elif num == 2:
+        drawRect(100,100,200,200,fill = "gray", opacity = 50)
+    elif num == 3:
+        drawPolygon(100,200,200,100,300,200,200,300,fill = "gray",opacity = 50)
+    else:
+        drawPolygon(200,150,166,116,116,164,200,260,284,164,234,116,fill = "gray",opacity = 50)
+
+
+def inShape(x,y,pointList):
+    #use even-odd rule if even outside if odd inside1
+    isInside = False
+    num = len(pointList)
+    x1,y1 = pointList[0]
+    for i in range(num+1):
+        x2,y2 = pointList[i%num]
+        if y > min(y1,y2) and y <= max(y1,y2) and x<=max(x1,x2):
+            if y1 != y2:
+                intersectionPoint = (x2-x1)*(y-y1) / (y2-y1) + x1
+            if x1==x2 or x<= intersectionPoint:
+                isInside = not isInside
+        x1,y1=x2,y2
+    return isInside
+def isGameOver(app):
+    for shape in app.shapes:
+        if shape.vertices[0] != app.correctOrder[shape.name]:
+            return False
+    app.gameOver = True
+
+def main():
+    runApp()
+main()
